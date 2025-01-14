@@ -1,7 +1,7 @@
 function onOpen() {
   var ui = DocumentApp.getUi();
   ui.createMenu("200 IQ Assistant")
-    .addItem("Write", "read_write")
+    .addItem("Read and Write", "read_write")
     .addSeparator()
     .addItem("Feed Back", "feedBack")
     .addSeparator()
@@ -11,9 +11,10 @@ function onOpen() {
 
 function read_write() {
   // var prompt = DocumentApp.getActiveDocument().getBody().getText();
-  var prompt = get_selected();
+  var prompt = get_selected_text();
   const resp = fetch_OpenaiAPI_gpt4(prompt.getText()).choices[0].message.content;
   replace_selected(resp);
+  // get_selected()
   // DocumentApp.getUi().alert(prompt);
   
 
@@ -23,8 +24,13 @@ function read_write() {
 
 function Enhancement() {
     var ui = DocumentApp.getUi();
-    var prompt = ui.prompt("Prompt", "Enter prompt: ");
-  
+    var sys_prompt = ui.prompt("Prompt", "Enter prompt: ",ui.ButtonSet.OK_CANCEL);
+    var res = sys_prompt.getResponseText();
+    var selected = get_selected_text();
+    DocumentApp.getUi().alert(selected);
+    var prompt = "Do this: " + res + "to this text: " + selected;
+    var output = fetch_OpenaiAPI_gpt4(prompt).choices[0].message.content;
+    replace_selected(output);
 }
 
 
@@ -33,31 +39,40 @@ function feedBack() {
 }
 
 // get text highlighted/selected by the user 
-function get_selected() {
-  var prompt = "";
+function get_selected_text() {
+  // var prompt = "";
   const selection = DocumentApp.getActiveDocument().getSelection();
+  res = [];
   if (selection) {
     selection.getRangeElements().forEach(element => {
-      prompt = element.getElement().asText();
+      const startIndex = element.getStartOffset();
+      const endIndex = element.getEndOffsetInclusive();
+      res.push(element.getElement().asText().getText().substring(startIndex, endIndex + 1))
+
     });
   }
-  return prompt;
+
+  return res.length ? res.join('\n') : '';
+}
+
+function get_selected() {
+  
 }
 
 function replace_selected(new_text) {
   const selection = DocumentApp.getActiveDocument().getSelection();
   if (selection) {
     selection.getRangeElements().forEach(element => {
-      var selected = get_selected();
+      var text = element.getElement().editAsText();
       const start_index = element.getStartOffset();
       const end_index = element.getEndOffsetInclusive();
-      selected.deleteText(start_index, end_index);
-      selected.insertText(start_index, new_text);
+      text.deleteText(start_index, end_index);
+      text.insertText(start_index, new_text);
     });
   }
 }
 
-const API_KEY = "key";
+const API_KEY = "Key";
 
 function fetch_OpenaiAPI_gpt4(prompt) {
     var url = "https://api.openai.com/v1/chat/completions";
